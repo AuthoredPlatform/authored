@@ -192,6 +192,13 @@ contract Authored is Owned, ERC20Interface, ERC223Interface {
         lockedTime[target] = _time;
         LockedTime(target, _time);
     }
+
+    function currentTime()
+        public
+        view
+        returns (uint256) {
+        return now;
+    }
 }
 
 library SafeMath {
