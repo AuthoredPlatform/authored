@@ -1,6 +1,7 @@
 pragma solidity ^0.4.19;
 
 interface ERC20 {
+  function totalSupply() public view returns (uint256);
   function balanceOf(address who) public view returns (uint256);
   function transfer(address to, uint256 value) public returns (bool);
   function allowance(address owner, address spender) public view returns (uint256);
@@ -97,6 +98,12 @@ contract Authored is ERC20, ERC223 {
      Approval(msg.sender, _spender, _value);
      return true;
    }
+   
+  function setTokenSaleAddress(address _tokenSaleAddress) public onlyOwner {
+    if (_tokenSaleAddress != address(0)) {
+      tokenSaleAddress = _tokenSaleAddress;
+    }
+  }
 
   function allowance(address _owner, address _spender) public view returns (uint256) {
      return allowed[_owner][_spender];
@@ -151,7 +158,9 @@ library SafeMath {
   }
 
   function div(uint256 a, uint256 b) internal pure returns (uint256) {
+    // assert(b > 0); // Solidity automatically throws when dividing by 0
     uint256 c = a / b;
+    // assert(a == b * c + a % b); // There is no case in which this doesn't hold
     return c;
   }
 
