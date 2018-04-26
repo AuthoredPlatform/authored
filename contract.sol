@@ -20,7 +20,34 @@ contract ERC223ReceivingContract {
     function tokenFallback(address _from, uint _value, bytes _data) public;
 }
 
-contract Authored is ERC20, ERC223 {
+contract Owned {
+    address public owner;
+    address public newOwner;
+
+    event OwnershipTransferred(address indexed _from, address indexed _to);
+
+    function Owned() public {
+        owner = msg.sender;
+    }
+
+    modifier onlyOwner {
+        require(msg.sender == owner);
+        _;
+    }
+
+    function transferOwnership(address _newOwner) public onlyOwner {
+        newOwner = _newOwner;
+    }
+    
+    function acceptOwnership() public {
+        require(msg.sender == newOwner);
+        OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+        newOwner = address(0);
+    }
+}
+
+contract Authored is Owned, ERC20, ERC223 {
   using SafeMath for uint;
      
     string internal _name;
@@ -30,6 +57,9 @@ contract Authored is ERC20, ERC223 {
 
     mapping (address => uint256) internal balances;
     mapping (address => mapping (address => uint256)) internal allowed;
+    mapping (address => bool) public frozenAccount;
+
+    event FrozenFunds(address target, bool frozen);
 
     function Authored(string name, string symbol, uint8 decimals, uint256 totalSupply) public {
         _symbol = symbol;
@@ -66,9 +96,16 @@ contract Authored is ERC20, ERC223 {
         returns (uint256) {
         return _totalSupply;
     }
-
+    
+    function freezeAccount(address target, bool freeze) onlyOwner public {
+        frozenAccount[target] = freeze;
+        FrozenFunds(target, freeze);
+    }
 
    function transfer(address _to, uint256 _value) public returns (bool) {
+     require(!frozenAccount[_from]);
+     require(!frozenAccount[_to]);
+     
      require(_to != address(0));
      require(_value <= balances[msg.sender]);
      balances[msg.sender] = SafeMath.sub(balances[msg.sender], _value);
@@ -79,9 +116,12 @@ contract Authored is ERC20, ERC223 {
 
   function balanceOf(address _owner) public view returns (uint256 balance) {
     return balances[_owner];
-   }
+  }
 
   function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
+     require(!frozenAccount[_from]);
+     require(!frozenAccount[_to]);
+     
      require(_to != address(0));
      require(_value <= balances[_from]);
      require(_value <= allowed[_from][msg.sender]);
@@ -98,12 +138,6 @@ contract Authored is ERC20, ERC223 {
      Approval(msg.sender, _spender, _value);
      return true;
    }
-   
-  function setTokenSaleAddress(address _tokenSaleAddress) public onlyOwner {
-    if (_tokenSaleAddress != address(0)) {
-      tokenSaleAddress = _tokenSaleAddress;
-    }
-  }
 
   function allowance(address _owner, address _spender) public view returns (uint256) {
      return allowed[_owner][_spender];
@@ -144,7 +178,6 @@ contract Authored is ERC20, ERC223 {
       }
       return (length>0);
     }
-
 }
 
 library SafeMath {
