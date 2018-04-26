@@ -1,17 +1,18 @@
 pragma solidity ^0.4.19;
 
-interface ERC20 {
+interface ERC20Interface {
   function totalSupply() public view returns (uint256);
   function balanceOf(address who) public view returns (uint256);
   function transfer(address to, uint256 value) public returns (bool);
   function allowance(address owner, address spender) public view returns (uint256);
   function transferFrom(address from, address to, uint256 value) public returns (bool);
   function approve(address spender, uint256 value) public returns (bool);
+  
   event Transfer(address indexed from, address indexed to, uint256 value);
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-interface ERC223 {
+interface ERC223Interface {
     function transfer(address to, uint value, bytes data) public;
     event Transfer(address indexed from, address indexed to, uint value, bytes indexed data);
 }
@@ -47,7 +48,7 @@ contract Owned {
     }
 }
 
-contract Authored is Owned, ERC20, ERC223 {
+contract Authored is Owned, ERC20Interface, ERC223Interface {
   using SafeMath for uint;
      
     string internal _name;
@@ -58,8 +59,10 @@ contract Authored is Owned, ERC20, ERC223 {
     mapping (address => uint256) internal balances;
     mapping (address => mapping (address => uint256)) internal allowed;
     mapping (address => bool) public frozenAccount;
-
+    mapping (address => uint) public lockedTime;
+    
     event FrozenFunds(address target, bool frozen);
+    event LockedTime(address target, uint _time);
 
     function Authored(string name, string symbol, uint8 decimals, uint256 totalSupply) public {
         _symbol = symbol;
@@ -97,14 +100,10 @@ contract Authored is Owned, ERC20, ERC223 {
         return _totalSupply;
     }
     
-    function freezeAccount(address target, bool freeze) onlyOwner public {
-        frozenAccount[target] = freeze;
-        FrozenFunds(target, freeze);
-    }
-
    function transfer(address _to, uint256 _value) public returns (bool) {
      require(!frozenAccount[msg.sender]);
      require(!frozenAccount[_to]);
+     require(now > lockedTime[msg.sender]);
      
      require(_to != address(0));
      require(_value <= balances[msg.sender]);
@@ -121,6 +120,7 @@ contract Authored is Owned, ERC20, ERC223 {
   function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
      require(!frozenAccount[_from]);
      require(!frozenAccount[_to]);
+     require(now > lockedTime[_from]);
      
      require(_to != address(0));
      require(_value <= balances[_from]);
@@ -161,6 +161,10 @@ contract Authored is Owned, ERC20, ERC223 {
    }
 
     function transfer(address _to, uint _value, bytes _data) public {
+        require(!frozenAccount[msg.sender]);
+        require(!frozenAccount[_to]);
+        require(now > lockedTime[msg.sender]);
+     
         require(_value > 0 );
         if(isContract(_to)) {
             ERC223ReceivingContract receiver = ERC223ReceivingContract(_to);
@@ -177,6 +181,16 @@ contract Authored is Owned, ERC20, ERC223 {
             length := extcodesize(_addr)
       }
       return (length>0);
+    }
+    
+    function freezeAccount(address target, bool freeze) onlyOwner public {
+        frozenAccount[target] = freeze;
+        FrozenFunds(target, freeze);
+    }
+    
+    function lockTime(address target, uint _time) onlyOwner public {
+        lockedTime[target] = _time;
+        LockedTime(target, _time);
     }
 }
 
