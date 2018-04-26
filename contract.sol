@@ -103,7 +103,7 @@ contract Authored is Owned, ERC20, ERC223 {
     }
 
    function transfer(address _to, uint256 _value) public returns (bool) {
-     require(!frozenAccount[_from]);
+     require(!frozenAccount[msg.sender]);
      require(!frozenAccount[_to]);
      
      require(_to != address(0));
