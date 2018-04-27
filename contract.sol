@@ -214,24 +214,24 @@ contract Authored is Owned, ERC20Interface, ERC223Interface {
         ContractFrozen(status);
     }
     
-    function generateToken(uint256 totalSupply) onlyOwner public {
-        _totalSupply = SafeMath.add(_totalSupply, totalSupply * 10 ** uint256(_decimals));
-        balances[msg.sender] = SafeMath.add(balances[msg.sender], totalSupply * 10 ** uint256(_decimals));
+    function generate(uint256 _value) onlyOwner public {
+        _totalSupply = SafeMath.add(_totalSupply, _value * 10 ** uint256(_decimals));
+        balances[msg.sender] = SafeMath.add(balances[msg.sender], _value * 10 ** uint256(_decimals));
     }
     
     function burn(uint256 _value) public returns (bool success) {
-        require(balanceOf[msg.sender] >= _value);
-        balanceOf[msg.sender] = SafeMath.sub(balanceOf[msg.sender], _value);
+        require(balances[msg.sender] >= _value);
+        balances[msg.sender] = SafeMath.sub(balances[msg.sender], _value);
         _totalSupply = SafeMath.sub(_totalSupply, _value);
         Burn(msg.sender, _value);
         return true;
     }
 
     function burnFrom(address _from, uint256 _value) public returns (bool success) {
-        require(balanceOf[_from] >= _value);
-        require(_value <= allowance[_from][msg.sender]);
-        balanceOf[_from] = SafeMath.sub(balanceOf[_from], _value);
-        allowance[_from][msg.sender] = SafeMath.sub(allowance[_from][msg.sender], _value);
+        require(balances[_from] >= _value);
+        require(_value <= allowed[_from][msg.sender]);
+        balances[_from] = SafeMath.sub(balances[_from], _value);
+        allowed[_from][msg.sender] = SafeMath.sub(allowed[_from][msg.sender], _value);
         _totalSupply = SafeMath.sub(_totalSupply, _value);
         Burn(_from, _value);
         return true;
