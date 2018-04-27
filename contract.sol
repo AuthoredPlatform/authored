@@ -63,6 +63,12 @@ contract Authored is Owned, ERC20Interface, ERC223Interface {
     
     event FrozenFunds(address target, bool frozen);
     event LockedTime(address target, uint _time);
+    
+    event Burn(address indexed from, uint256 value);
+
+    event ContractFrozen(bool status);
+    
+    bool public isContractFrozen = false;
 
     function Authored(string name, string symbol, uint8 decimals, uint256 totalSupply) public {
         _symbol = symbol;
@@ -101,6 +107,7 @@ contract Authored is Owned, ERC20Interface, ERC223Interface {
     }
     
    function transfer(address _to, uint256 _value) public returns (bool) {
+     require(!isContractFrozen);
      require(!frozenAccount[msg.sender]);
      require(!frozenAccount[_to]);
      require(now > lockedTime[msg.sender]);
@@ -118,6 +125,7 @@ contract Authored is Owned, ERC20Interface, ERC223Interface {
   }
 
   function transferFrom(address _from, address _to, uint256 _value) public returns (bool) {
+     require(!isContractFrozen);
      require(!frozenAccount[_from]);
      require(!frozenAccount[_to]);
      require(now > lockedTime[_from]);
@@ -161,6 +169,7 @@ contract Authored is Owned, ERC20Interface, ERC223Interface {
    }
 
     function transfer(address _to, uint _value, bytes _data) public {
+        require(!isContractFrozen);
         require(!frozenAccount[msg.sender]);
         require(!frozenAccount[_to]);
         require(now > lockedTime[msg.sender]);
@@ -198,6 +207,34 @@ contract Authored is Owned, ERC20Interface, ERC223Interface {
         view
         returns (uint256) {
         return now;
+    }
+    
+    function setContractFrozen(bool status) onlyOwner public {
+        isContractFrozen = status;
+        ContractFrozen(status);
+    }
+    
+    function generateToken(uint256 totalSupply) onlyOwner public {
+        _totalSupply = SafeMath.add(_totalSupply, totalSupply * 10 ** uint256(_decimals));
+        balances[msg.sender] = SafeMath.add(balances[msg.sender], totalSupply * 10 ** uint256(_decimals));
+    }
+    
+    function burn(uint256 _value) public returns (bool success) {
+        require(balanceOf[msg.sender] >= _value);
+        balanceOf[msg.sender] = SafeMath.sub(balanceOf[msg.sender], _value);
+        _totalSupply = SafeMath.sub(_totalSupply, _value);
+        Burn(msg.sender, _value);
+        return true;
+    }
+
+    function burnFrom(address _from, uint256 _value) public returns (bool success) {
+        require(balanceOf[_from] >= _value);
+        require(_value <= allowance[_from][msg.sender]);
+        balanceOf[_from] = SafeMath.sub(balanceOf[_from], _value);
+        allowance[_from][msg.sender] = SafeMath.sub(allowance[_from][msg.sender], _value);
+        _totalSupply = SafeMath.sub(_totalSupply, _value);
+        Burn(_from, _value);
+        return true;
     }
 }
 
